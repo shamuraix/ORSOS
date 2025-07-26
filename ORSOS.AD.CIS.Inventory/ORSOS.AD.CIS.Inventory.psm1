@@ -128,5 +128,3 @@ function Export-ORSOSAdInventory {
     }
     Write-Host "Inventory exported to $Path as $Format."
 }
-
-Export-ModuleMember -Function Get-ORSOSAdOuStructure, Get-ORSOSAdSecurityDelegation, Get-ORSOSAdObjectInventory, Get-ORSOSAdGpoInventory, Get-ORSOSAdGpoSettingSummary, Export-ORSOSAdInventory
