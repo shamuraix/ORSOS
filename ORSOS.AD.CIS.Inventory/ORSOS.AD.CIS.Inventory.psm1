@@ -96,13 +96,20 @@ function Get-ORSOSAdGpoInventory {
     param()
     process {
         $gpoLinks = Get-ORSOSAdGpoLinks
-        $gpoLinksGrouped = $gpoLinks | Group-Object GpoGuid
+        $gpoLinksGrouped = @{}
+        foreach ($item in $gpoLinks) {
+            $id = $item.GpoGuid
+            if (-not $gpoLinksGrouped.ContainsKey($id)) {
+                $gpoLinksGrouped[$id] = @()
+            }
+            $gpoLinksGrouped[$id] += $item
+        }
 
         Get-GPO -All | ForEach-Object {
             $gpo = $_
             $links = @()
-            if ($gpoLinksGrouped["$($gpo.Id)"]) {
-                $links = $gpoLinksGrouped["$($gpo.Id)"].Group | ForEach-Object {
+            if ($gpoLinksGrouped.ContainsKey("$($gpo.Id)")) {
+                $links = $gpoLinksGrouped["$($gpo.Id)"] | ForEach-Object {
                     [PSCustomObject]@{
                         TargetOU = $_.TargetOU
                         Enforced = $_.Enforced
