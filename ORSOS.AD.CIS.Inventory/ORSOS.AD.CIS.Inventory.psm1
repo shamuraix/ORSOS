@@ -9,6 +9,37 @@ function Get-ORSOSAdOuStructure {
     }
 }
 
+function Get-ORSOSAdGpoLinks {
+    [CmdletBinding()]
+    param()
+    process {
+        $gpos = Get-GPO -All | Group-Object -Property Id -AsHashTable
+        $ous = Get-ADOrganizationalUnit -Filter * -Properties gPLink, DistinguishedName
+        foreach ($ou in $ous) {
+            if ($ou.gPLink) {
+                # gPLink is a string with one or more LDAP://... entries
+                # Format: [LDAP://<GUID>;<options>]
+                $gpoLinks = ($ou.gPLink -split '\]\[') -replace '\[|\]', ''
+                foreach ($gpoLink in $gpoLinks) {
+                    if ($gpoLink -match 'LDAP://\{(?<guid>[^\}]+)\};(?<options>\d+)') {
+                        $guid = $matches['guid']
+                        $options = [int]$matches['options']
+                        $enforced = ($options -band 2) -ne 0
+                        $gpoName = $gpos["{$guid}"].DisplayName
+                        [PSCustomObject]@{
+                            GpoGuid     = $guid
+                            GpoName     = $gpoName
+                            TargetOU    = $ou.DistinguishedName
+                            Enforced    = $enforced
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 function Get-ORSOSAdSecurityDelegation {
     [CmdletBinding()]
     param()
@@ -64,24 +95,30 @@ function Get-ORSOSAdGpoInventory {
     [CmdletBinding()]
     param()
     process {
+        $gpoLinks = Get-ORSOSAdGpoLinks
+        $gpoLinksGrouped = $gpoLinks | Group-Object GpoGuid
+
         Get-GPO -All | ForEach-Object {
             $gpo = $_
-            $links = Get-GPOLink -Guid $gpo.Id | ForEach-Object {
-                [PSCustomObject]@{
-                    TargetOU     = $_.Target
-                    Enforced     = $_.Enforced
+            $links = @()
+            if ($gpoLinksGrouped["$($gpo.Id)"]) {
+                $links = $gpoLinksGrouped["$($gpo.Id)"].Group | ForEach-Object {
+                    [PSCustomObject]@{
+                        TargetOU = $_.TargetOU
+                        Enforced = $_.Enforced
+                    }
                 }
             }
             [PSCustomObject]@{
-                Name          = $gpo.DisplayName
-                Guid          = $gpo.Id
-                Status        = $gpo.GpoStatus
-                Owner         = $gpo.Owner
-                Created       = $gpo.CreationTime
-                Modified      = $gpo.ModificationTime
+                Name              = $gpo.DisplayName
+                Guid              = $gpo.Id
+                Status            = $gpo.GpoStatus
+                Owner             = $gpo.Owner
+                Created           = $gpo.CreationTime
+                Modified          = $gpo.ModificationTime
                 SecurityFiltering = (Get-GPPermission -Guid $gpo.Id -All | Where-Object { $_.Permission -eq 'GpoApply' } | Select-Object -ExpandProperty Trustee)
-                WMIFilter     = $gpo.WmiFilter.Name
-                Links         = $links
+                WMIFilter         = $gpo.WmiFilter.Name
+                Links             = $links
             }
         }
     }
