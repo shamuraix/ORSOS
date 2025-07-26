@@ -1,8 +1,5 @@
 #Requires -Modules ActiveDirectory, GroupPolicy, powershell-yaml
 
-. "$PSScriptRoot\Private\Logging.ps1"
-#. "$PSScriptRoot\Private\InputParser.ps1"
-
 function Import-AdcisConfiguration {
     [CmdletBinding()]
     param (
