@@ -1,0 +1,16 @@
+[
+  { "GpoName": "C-ALL-Wrks-AcctPol-CIS1", "TargetOU": "OU=Workstations,OU=ISD,OU=Divisions,DC=sos,DC=oregon,DC=local", "Enforced": true },
+  { "GpoName": "C-ALL-Wrks-AcctPol-CIS1", "TargetOU": "OU=Workstations,OU=ELEC,OU=Divisions,DC=sos,DC=oregon,DC=local", "Enforced": true },
+  { "GpoName": "C-ALL-Wrks-AcctPol-CIS1", "TargetOU": "OU=Workstations,OU=AUD,OU=Divisions,DC=sos,DC=oregon,DC=local", "Enforced": true },
+  { "GpoName": "C-ALL-Wrks-AcctPol-CIS1", "TargetOU": "OU=Workstations,OU=ARCH,OU=Divisions,DC=sos,DC=oregon,DC=local", "Enforced": true },
+  { "GpoName": "C-ALL-Wrks-AcctPol-CIS1", "TargetOU": "OU=Workstations,OU=BSD,OU=Divisions,DC=sos,DC=oregon,DC=local", "Enforced": true },
+  { "GpoName": "C-ALL-Wrks-AcctPol-CIS1", "TargetOU": "OU=Workstations,OU=CORP,OU=Divisions,DC=sos,DC=oregon,DC=local", "Enforced": true },
+  { "GpoName": "C-ISD-Wrks-USB", "TargetOU": "OU=Workstations,OU=ISD,OU=Divisions,DC=sos,DC=oregon,DC=local", "Enforced": false },
+  { "GpoName": "C-ELEC-Wrks-Printer", "TargetOU": "OU=Workstations,OU=ELEC,OU=Divisions,DC=sos,DC=oregon,DC=local", "Enforced": false },
+  { "GpoName": "C-AUD-Srvs-AuditOverride", "TargetOU": "OU=Servers,OU=AUD,OU=Divisions,DC=sos,DC=oregon,DC=local", "Enforced": false },
+  { "GpoName": "C-ARCH-Wrks-AppBlock", "TargetOU": "OU=Workstations,OU=ARCH,OU=Divisions,DC=sos,DC=oregon,DC=local", "Enforced": false },
+  { "GpoName": "C-BSD-Srvs-RDPException", "TargetOU": "OU=Servers,OU=BSD,OU=Divisions,DC=sos,DC=oregon,DC=local", "Enforced": false },
+  { "GpoName": "C-CORP-Wrks-SoftInst", "TargetOU": "OU=Workstations,OU=CORP,OU=Divisions,DC=sos,DC=oregon,DC=local", "Enforced": false },
+  { "GpoName": "U-ALL-PwdPol-CIS1", "TargetOU": "OU=Admins,OU=ISD,OU=Divisions,DC=sos,DC=oregon,DC=local", "Enforced": true },
+  { "GpoName": "U-Tier0-DAControls", "TargetOU": "OU=Tier0,DC=sos,DC=oregon,DC=local", "Enforced": true }
+]

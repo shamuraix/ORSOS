@@ -1,0 +1,6 @@
+- Name: Workstations
+  DistinguishedName: "OU=Workstations,DC=example,DC=com"
+  ParentDN: "DC=example,DC=com"
+- Name: Servers
+  DistinguishedName: "OU=Servers,DC=example,DC=com"
+  ParentDN: "DC=example,DC=com"

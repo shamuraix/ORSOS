@@ -1,0 +1,59 @@
+[
+  { "Name": "Tier0", "DistinguishedName": "OU=Tier0,DC=sos,DC=oregon,DC=local", "ParentDN": "DC=sos,DC=oregon,DC=local" },
+  { "Name": "Domain Controllers", "DistinguishedName": "OU=Domain Controllers,OU=Tier0,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=Tier0,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Privileged Admins", "DistinguishedName": "OU=Privileged Admins,OU=Tier0,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=Tier0,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Privileged Service Accounts", "DistinguishedName": "OU=Privileged Service Accounts,OU=Tier0,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=Tier0,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Privileged Servers", "DistinguishedName": "OU=Privileged Servers,OU=Tier0,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=Tier0,DC=sos,DC=oregon,DC=local" },
+
+  { "Name": "Resources", "DistinguishedName": "OU=Resources,DC=sos,DC=oregon,DC=local", "ParentDN": "DC=sos,DC=oregon,DC=local" },
+  { "Name": "Groups", "DistinguishedName": "OU=Groups,OU=Resources,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=Resources,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Contacts", "DistinguishedName": "OU=Contacts,OU=Resources,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=Resources,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Service Accounts", "DistinguishedName": "OU=Service Accounts,OU=Resources,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=Resources,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Shared Mailboxes", "DistinguishedName": "OU=Shared Mailboxes,OU=Resources,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=Resources,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Generic Servers", "DistinguishedName": "OU=Generic Servers,OU=Resources,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=Resources,DC=sos,DC=oregon,DC=local" },
+
+  { "Name": "Divisions", "DistinguishedName": "OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "DC=sos,DC=oregon,DC=local" },
+
+  { "Name": "ISD", "DistinguishedName": "OU=ISD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "ELEC", "DistinguishedName": "OU=ELEC,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "AUD", "DistinguishedName": "OU=AUD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "ARCH", "DistinguishedName": "OU=ARCH,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "BSD", "DistinguishedName": "OU=BSD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "CORP", "DistinguishedName": "OU=CORP,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=Divisions,DC=sos,DC=oregon,DC=local" },
+
+  { "Name": "Admins", "DistinguishedName": "OU=Admins,OU=ISD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=ISD,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Servers", "DistinguishedName": "OU=Servers,OU=ISD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=ISD,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Workstations", "DistinguishedName": "OU=Workstations,OU=ISD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=ISD,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Service Accounts", "DistinguishedName": "OU=Service Accounts,OU=ISD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=ISD,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Groups", "DistinguishedName": "OU=Groups,OU=ISD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=ISD,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+
+  { "Name": "Admins", "DistinguishedName": "OU=Admins,OU=ELEC,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=ELEC,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Servers", "DistinguishedName": "OU=Servers,OU=ELEC,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=ELEC,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Workstations", "DistinguishedName": "OU=Workstations,OU=ELEC,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=ELEC,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Service Accounts", "DistinguishedName": "OU=Service Accounts,OU=ELEC,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=ELEC,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Groups", "DistinguishedName": "OU=Groups,OU=ELEC,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=ELEC,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+
+  { "Name": "Admins", "DistinguishedName": "OU=Admins,OU=AUD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=AUD,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Servers", "DistinguishedName": "OU=Servers,OU=AUD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=AUD,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Workstations", "DistinguishedName": "OU=Workstations,OU=AUD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=AUD,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Service Accounts", "DistinguishedName": "OU=Service Accounts,OU=AUD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=AUD,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Groups", "DistinguishedName": "OU=Groups,OU=AUD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=AUD,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+
+  { "Name": "Admins", "DistinguishedName": "OU=Admins,OU=ARCH,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=ARCH,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Servers", "DistinguishedName": "OU=Servers,OU=ARCH,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=ARCH,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Workstations", "DistinguishedName": "OU=Workstations,OU=ARCH,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=ARCH,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Service Accounts", "DistinguishedName": "OU=Service Accounts,OU=ARCH,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=ARCH,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Groups", "DistinguishedName": "OU=Groups,OU=ARCH,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=ARCH,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+
+  { "Name": "Admins", "DistinguishedName": "OU=Admins,OU=BSD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=BSD,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Servers", "DistinguishedName": "OU=Servers,OU=BSD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=BSD,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Workstations", "DistinguishedName": "OU=Workstations,OU=BSD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=BSD,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Service Accounts", "DistinguishedName": "OU=Service Accounts,OU=BSD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=BSD,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Groups", "DistinguishedName": "OU=Groups,OU=BSD,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=BSD,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+
+  { "Name": "Admins", "DistinguishedName": "OU=Admins,OU=CORP,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=CORP,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Servers", "DistinguishedName": "OU=Servers,OU=CORP,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=CORP,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Workstations", "DistinguishedName": "OU=Workstations,OU=CORP,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=CORP,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Service Accounts", "DistinguishedName": "OU=Service Accounts,OU=CORP,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=CORP,OU=Divisions,DC=sos,DC=oregon,DC=local" },
+  { "Name": "Groups", "DistinguishedName": "OU=Groups,OU=CORP,OU=Divisions,DC=sos,DC=oregon,DC=local", "ParentDN": "OU=CORP,OU=Divisions,DC=sos,DC=oregon,DC=local" }
+]

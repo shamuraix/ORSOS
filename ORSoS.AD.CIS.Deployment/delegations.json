@@ -1,0 +1,32 @@
+[
+  {
+    "OU": "OU=Workstations,OU=ISD,OU=Divisions,DC=sos,DC=oregon,DC=local",
+    "Group": "ISD-ServiceDesk",
+    "Permissions": ["ResetPassword", "UnlockAccount", "JoinComputer", "Read", "Write"],
+    "Description": "Centralized Service Desk for all user/workstation support"
+  },
+  {
+    "OU": "OU=Servers,OU=ISD,OU=Divisions,DC=sos,DC=oregon,DC=local",
+    "Group": "ISD-ServerAdmins",
+    "Permissions": ["FullControl"],
+    "Description": "Full control over all servers and server service accounts"
+  },
+  {
+    "OU": "OU=Admins,OU=ISD,OU=Divisions,DC=sos,DC=oregon,DC=local",
+    "Group": "ISD-PrivilegedAdmins",
+    "Permissions": ["FullControl"],
+    "Description": "Privileged admin accounts for elevated management tasks"
+  },
+  {
+    "OU": "OU=Tier0,DC=sos,DC=oregon,DC=local",
+    "Group": "ISD-SystemEngineers",
+    "Permissions": ["FullControl"],
+    "Description": "Domain Admins and Tier0 asset control"
+  },
+  {
+    "OU": "OU=Tier0,DC=sos,DC=oregon,DC=local",
+    "Group": "ISD-SecurityEngineers",
+    "Permissions": ["Read", "Audit"],
+    "Description": "Audit/read-only on Tier0, security tool access"
+  }
+]
