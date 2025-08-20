@@ -267,8 +267,10 @@ function Set-AdGroupMembership {
     $desired = @($desired)
 
     # Ensure arrays are properly initialized and filter out null elements for safety
-    $current = @($current | Where-Object { $null -ne $_ })
-    $desired = @($desired | Where-Object { $null -ne $_ })
+    $current = @($current | Where-Object { $null -ne $_ -and $_ -ne '' })
+    $desired = @($desired | Where-Object { $null -ne $_ -and $_ -ne '' })
+
+    Write-StructuredLog -Level Debug -Message ("Membership analysis for '{0}': Current={1}, Desired={2}" -f $GroupSam, $current.Count, $desired.Count) -LogPath $LogPath
 
     # Fix critical logic error: Use proper array filtering instead of broken Compare-Object logic
     $toAdd    = $desired | Where-Object { $_ -notin $current }
@@ -276,9 +278,9 @@ function Set-AdGroupMembership {
         $current | Where-Object { $_ -notin $desired }
     } else { @() }
 
-    # Ensure return arrays are properly initialized
-    $toAdd = @($toAdd | Where-Object { $null -ne $_ })
-    $toRemove = @($toRemove | Where-Object { $null -ne $_ })
+    # Ensure return arrays are properly initialized and filter out null/empty elements
+    $toAdd = @($toAdd | Where-Object { $null -ne $_ -and $_ -ne '' })
+    $toRemove = @($toRemove | Where-Object { $null -ne $_ -and $_ -ne '' })
 
     if ($toAdd.Count -gt 0 -and $PSCmdlet.ShouldProcess($GroupSam, ("Add {0}: {1}" -f $MemberType, ($toAdd -join ', ')))) {
         try {
@@ -301,9 +303,17 @@ function Set-AdGroupMembership {
     }
 
     # Add null safety check for final member enumeration to prevent runtime errors
-    $final = Get-ADGroupMember -Identity $GroupSam -Recursive:$false | Where-Object { $_ } | Where-Object {
-        if ($MemberType -eq 'User') { $_.objectClass -eq 'user' } else { $_.objectClass -eq 'group' }
-    } | Select-Object -ExpandProperty SamAccountName
+    $final = @()
+    try {
+        $finalMembers = Get-ADGroupMember -Identity $GroupSam -Recursive:$false -ErrorAction Stop | Where-Object { $_ } | Where-Object {
+            if ($MemberType -eq 'User') { $_.objectClass -eq 'user' } else { $_.objectClass -eq 'group' }
+        } | Select-Object -ExpandProperty SamAccountName
+        $final = @($finalMembers | Where-Object { $null -ne $_ -and $_ -ne '' })
+    } catch {
+        Write-StructuredLog -Level Warn -Message ("Failed to enumerate final members of '{0}': {1}" -f $GroupSam, $_.Exception.Message) -LogPath $LogPath
+        # Return empty array if enumeration fails
+        $final = @()
+    }
 
     $endTime = Get-Date
     $duration = $endTime - $startTime
