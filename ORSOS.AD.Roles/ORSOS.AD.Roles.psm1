@@ -146,7 +146,13 @@ function Set-AdGroupPresence {
     )
     Test-AdModuleAvailable
 
-    $existing = Get-ADGroup -LDAPFilter "(sAMAccountName=$Name)" -ErrorAction SilentlyContinue
+    # Validate OU exists before creating group
+    if ($OrganizationalUnitDN -and -not (Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$OrganizationalUnitDN'" -ErrorAction SilentlyContinue)) {
+        Write-Error "❌ Organizational Unit does not exist: $OrganizationalUnitDN"
+        return
+    }
+
+    $existing = Get-ADGroup -Filter "SamAccountName -eq '$Name'" -ErrorAction SilentlyContinue
 
     if (-not $existing) {
         if ($PSCmdlet.ShouldProcess($Name, "Create AD Group ($Scope, Security) in $OrganizationalUnitDN")) {
@@ -159,7 +165,10 @@ function Set-AdGroupPresence {
                 throw
             }
         }
-        $existing = Get-ADGroup -LDAPFilter "(sAMAccountName=$Name)" -ErrorAction Stop
+        # Only attempt to retrieve if not in WhatIf mode
+        if (-not $WhatIfPreference) {
+            $existing = Get-ADGroup -Filter "SamAccountName -eq '$Name'" -ErrorAction Stop
+        }
     } else {
         if ($existing.GroupScope -ne $Scope) {
             Write-StructuredLog -Level Warn -Message ("Group '{0}' scope is '{1}'; expected '{2}'." -f $Name, $existing.GroupScope, $Scope) -LogPath $LogPath
@@ -206,7 +215,7 @@ function Set-AdGroupMembership {
 
     $current = @()
     try {
-        $current = Get-ADGroupMember -Identity $GroupSam -Recursive:$false -ErrorAction Stop | ForEach-Object {
+        $current = Get-ADGroupMember -Identity $GroupSam -Recursive:$false -ErrorAction Stop | Where-Object { $_ } | ForEach-Object {
             if ($MemberType -eq 'User'  -and $_.objectClass -eq 'user')  { $_.SamAccountName }
             elseif ($MemberType -eq 'Group' -and $_.objectClass -eq 'group') { $_.SamAccountName }
         }
@@ -216,7 +225,7 @@ function Set-AdGroupMembership {
 
     $desired = @()
     if ($MemberType -eq 'User') {
-        foreach ($sam in ($DesiredMembersSam | Where-Object { $_ -and $_.Trim() })) {
+        foreach ($sam in ($DesiredMembersSam | Where-Object { $_ } | Where-Object { $_.Trim() })) {
             try {
                 $u = Get-ADUser -Identity $sam -ErrorAction Stop
                 $desired += $u.SamAccountName
@@ -225,7 +234,7 @@ function Set-AdGroupMembership {
             }
         }
     } else {
-        foreach ($sam in ($DesiredMembersSam | Where-Object { $_ -and $_.Trim() })) {
+        foreach ($sam in ($DesiredMembersSam | Where-Object { $_ } | Where-Object { $_.Trim() })) {
             try {
                 $g = Get-ADGroup -Identity $sam -ErrorAction Stop
                 $desired += $g.SamAccountName
@@ -235,9 +244,14 @@ function Set-AdGroupMembership {
         }
     }
 
-    $toAdd    = Compare-Object -ReferenceObject $current -DifferenceObject $desired -PassThru | Where-Object { $_ -in $desired }
+    # Ensure arrays don't contain null elements
+    $current = @($current | Where-Object { $_ })
+    $desired = @($desired | Where-Object { $_ })
+
+    # Fix the broken membership comparison logic
+    $toAdd    = $desired | Where-Object { $_ -notin $current }
     $toRemove = if ($Mode -eq 'Exact') {
-        Compare-Object -ReferenceObject $current -DifferenceObject $desired -PassThru | Where-Object { $_ -in $current }
+        $current | Where-Object { $_ -notin $desired }
     } else { @() }
 
     if ($toAdd.Count -gt 0 -and $PSCmdlet.ShouldProcess($GroupSam, ("Add {0}: {1}" -f $MemberType, ($toAdd -join ', '))))) {
@@ -260,7 +274,7 @@ function Set-AdGroupMembership {
         }
     }
 
-    $final = Get-ADGroupMember -Identity $GroupSam -Recursive:$false | Where-Object {
+    $final = Get-ADGroupMember -Identity $GroupSam -Recursive:$false | Where-Object { $_ } | Where-Object {
         if ($MemberType -eq 'User') { $_.objectClass -eq 'user' } else { $_.objectClass -eq 'group' }
     } | Select-Object -ExpandProperty SamAccountName
 
