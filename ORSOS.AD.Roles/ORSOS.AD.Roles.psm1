@@ -33,10 +33,10 @@ Get-Help Invoke-AdGroupProvisioning -Detailed
 
 #>
 
-Set-StrictMode -Version Latest
-
 using namespace System.Collections.Generic
 using namespace System.Management.Automation
+
+Set-StrictMode -Version Latest
 
 #region Helpers
 
@@ -146,7 +146,24 @@ function Set-AdGroupPresence {
     )
     Test-AdModuleAvailable
 
-    $existing = Get-ADGroup -LDAPFilter "(sAMAccountName=$Name)" -ErrorAction SilentlyContinue
+    # Validate group name follows AD naming conventions
+    if ($Name -match '[\\\/\[\]:;|=,+*?<>"]') {
+        $err = [System.Exception]::new("Group name '$Name' contains invalid characters. AD group names cannot contain: \\ / [ ] : ; | = , + * ? < > `"")
+        $record = [System.Management.Automation.ErrorRecord]::new($err, "InvalidGroupName", [System.Management.Automation.ErrorCategory]::InvalidArgument, $Name)
+        throw $record
+    }
+
+    # Validate that target OU exists before attempting to create group
+    try {
+        $null = Get-ADOrganizationalUnit -Identity $OrganizationalUnitDN -ErrorAction Stop
+    } catch {
+        $err = [System.Exception]::new("Target OU '$OrganizationalUnitDN' does not exist or is not accessible.")
+        $record = [System.Management.Automation.ErrorRecord]::new($err, "OUNotFound", [System.Management.Automation.ErrorCategory]::ObjectNotFound, $OrganizationalUnitDN)
+        throw $record
+    }
+
+    # Use safer Filter parameter instead of vulnerable LDAP filter construction
+    $existing = Get-ADGroup -Filter "SamAccountName -eq '$Name'" -ErrorAction SilentlyContinue
 
     if (-not $existing) {
         if ($PSCmdlet.ShouldProcess($Name, "Create AD Group ($Scope, Security) in $OrganizationalUnitDN")) {
@@ -159,7 +176,14 @@ function Set-AdGroupPresence {
                 throw
             }
         }
-        $existing = Get-ADGroup -LDAPFilter "(sAMAccountName=$Name)" -ErrorAction Stop
+        # Fix WhatIf handling: only retrieve group if not in WhatIf mode or return placeholder
+        if (-not $WhatIfPreference) {
+            $existing = Get-ADGroup -Filter "SamAccountName -eq '$Name'" -ErrorAction Stop
+        } else {
+            # In WhatIf mode, return placeholder DN since group creation was simulated
+            Write-StructuredLog -Level Debug -Message ("WhatIf: Group '{0}' would be created in '{1}'." -f $Name, $OrganizationalUnitDN) -LogPath $LogPath
+            return "CN=$Name,$OrganizationalUnitDN"
+        }
     } else {
         if ($existing.GroupScope -ne $Scope) {
             Write-StructuredLog -Level Warn -Message ("Group '{0}' scope is '{1}'; expected '{2}'." -f $Name, $existing.GroupScope, $Scope) -LogPath $LogPath
@@ -202,11 +226,15 @@ function Set-AdGroupMembership {
     )
     Test-AdModuleAvailable
 
+    $startTime = Get-Date
+    Write-StructuredLog -Level Debug -Message ("Starting membership sync for '{0}' (Mode: {1}, Type: {2})" -f $GroupSam, $Mode, $MemberType) -LogPath $LogPath
+
     $null = Get-ADGroup -Identity $GroupSam -ErrorAction Stop
 
     $current = @()
     try {
-        $current = Get-ADGroupMember -Identity $GroupSam -Recursive:$false -ErrorAction Stop | ForEach-Object {
+        # Add null safety check before ForEach-Object to prevent runtime errors
+        $current = Get-ADGroupMember -Identity $GroupSam -Recursive:$false -ErrorAction Stop | Where-Object { $_ } | ForEach-Object {
             if ($MemberType -eq 'User'  -and $_.objectClass -eq 'user')  { $_.SamAccountName }
             elseif ($MemberType -eq 'Group' -and $_.objectClass -eq 'group') { $_.SamAccountName }
         }
@@ -214,12 +242,13 @@ function Set-AdGroupMembership {
         Write-StructuredLog -Level Warn -Message ("Enumerating members of '{0}' failed: {1}" -f $GroupSam, $_.Exception.Message) -LogPath $LogPath
     }
 
-    $desired = @()
+    # Use ArrayList for better performance instead of += array concatenation
+    $desired = [System.Collections.ArrayList]::new()
     if ($MemberType -eq 'User') {
         foreach ($sam in ($DesiredMembersSam | Where-Object { $_ -and $_.Trim() })) {
             try {
                 $u = Get-ADUser -Identity $sam -ErrorAction Stop
-                $desired += $u.SamAccountName
+                $null = $desired.Add($u.SamAccountName)
             } catch {
                 Write-StructuredLog -Level Warn -Message ("User '{0}' not found; skipping for '{1}'." -f $sam, $GroupSam) -LogPath $LogPath
             }
@@ -228,19 +257,30 @@ function Set-AdGroupMembership {
         foreach ($sam in ($DesiredMembersSam | Where-Object { $_ -and $_.Trim() })) {
             try {
                 $g = Get-ADGroup -Identity $sam -ErrorAction Stop
-                $desired += $g.SamAccountName
+                $null = $desired.Add($g.SamAccountName)
             } catch {
                 Write-StructuredLog -Level Warn -Message ("Group '{0}' not found; skipping for '{1}'." -f $sam, $GroupSam) -LogPath $LogPath
             }
         }
     }
+    # Convert back to array for consistency with existing code
+    $desired = @($desired)
 
-    $toAdd    = Compare-Object -ReferenceObject $current -DifferenceObject $desired -PassThru | Where-Object { $_ -in $desired }
+    # Ensure arrays are properly initialized and filter out null elements for safety
+    $current = @($current | Where-Object { $null -ne $_ })
+    $desired = @($desired | Where-Object { $null -ne $_ })
+
+    # Fix critical logic error: Use proper array filtering instead of broken Compare-Object logic
+    $toAdd    = $desired | Where-Object { $_ -notin $current }
     $toRemove = if ($Mode -eq 'Exact') {
-        Compare-Object -ReferenceObject $current -DifferenceObject $desired -PassThru | Where-Object { $_ -in $current }
+        $current | Where-Object { $_ -notin $desired }
     } else { @() }
 
-    if ($toAdd.Count -gt 0 -and $PSCmdlet.ShouldProcess($GroupSam, ("Add {0}: {1}" -f $MemberType, ($toAdd -join ', '))))) {
+    # Ensure return arrays are properly initialized
+    $toAdd = @($toAdd | Where-Object { $null -ne $_ })
+    $toRemove = @($toRemove | Where-Object { $null -ne $_ })
+
+    if ($toAdd.Count -gt 0 -and $PSCmdlet.ShouldProcess($GroupSam, ("Add {0}: {1}" -f $MemberType, ($toAdd -join ', ')))) {
         try {
             Add-ADGroupMember -Identity $GroupSam -Members $toAdd -ErrorAction Stop
             Write-StructuredLog -Level Info -Message ("Added to '{0}': {1}" -f $GroupSam, ($toAdd -join ', ')) -LogPath $LogPath
@@ -250,7 +290,7 @@ function Set-AdGroupMembership {
         }
     }
 
-    if ($toRemove.Count -gt 0 -and $PSCmdlet.ShouldProcess($GroupSam, ("Remove {0}: {1}" -f $MemberType, ($toRemove -join ', '))))) {
+    if ($toRemove.Count -gt 0 -and $PSCmdlet.ShouldProcess($GroupSam, ("Remove {0}: {1}" -f $MemberType, ($toRemove -join ', ')))) {
         try {
             Remove-ADGroupMember -Identity $GroupSam -Members $toRemove -Confirm:$false -ErrorAction Stop
             Write-StructuredLog -Level Info -Message ("Removed from '{0}': {1}" -f $GroupSam, ($toRemove -join ', ')) -LogPath $LogPath
@@ -260,9 +300,14 @@ function Set-AdGroupMembership {
         }
     }
 
-    $final = Get-ADGroupMember -Identity $GroupSam -Recursive:$false | Where-Object {
+    # Add null safety check for final member enumeration to prevent runtime errors
+    $final = Get-ADGroupMember -Identity $GroupSam -Recursive:$false | Where-Object { $_ } | Where-Object {
         if ($MemberType -eq 'User') { $_.objectClass -eq 'user' } else { $_.objectClass -eq 'group' }
     } | Select-Object -ExpandProperty SamAccountName
+
+    $endTime = Get-Date
+    $duration = $endTime - $startTime
+    Write-StructuredLog -Level Debug -Message ("Completed membership sync for '{0}' in {1:F2}ms" -f $GroupSam, $duration.TotalMilliseconds) -LogPath $LogPath
 
     [pscustomobject]@{
         Group        = $GroupSam
@@ -351,6 +396,25 @@ function Invoke-AdGroupProvisioning {
     )
 
     Test-AdModuleAvailable
+
+    # Validate that required OUs exist before starting provisioning
+    try {
+        $null = Get-ADOrganizationalUnit -Identity $RoleGroupsOU -ErrorAction Stop
+        Write-StructuredLog -Level Debug -Message ("Validated Role Groups OU: {0}" -f $RoleGroupsOU) -LogPath $LogPath
+    } catch {
+        $err = [System.Exception]::new("Role Groups OU '$RoleGroupsOU' does not exist or is not accessible.")
+        $record = [System.Management.Automation.ErrorRecord]::new($err, "RoleGroupsOUNotFound", [System.Management.Automation.ErrorCategory]::ObjectNotFound, $RoleGroupsOU)
+        throw $record
+    }
+
+    try {
+        $null = Get-ADOrganizationalUnit -Identity $ResourceGroupsOU -ErrorAction Stop
+        Write-StructuredLog -Level Debug -Message ("Validated Resource Groups OU: {0}" -f $ResourceGroupsOU) -LogPath $LogPath
+    } catch {
+        $err = [System.Exception]::new("Resource Groups OU '$ResourceGroupsOU' does not exist or is not accessible.")
+        $record = [System.Management.Automation.ErrorRecord]::new($err, "ResourceGroupsOUNotFound", [System.Management.Automation.ErrorCategory]::ObjectNotFound, $ResourceGroupsOU)
+        throw $record
+    }
 
     $mapping = if ($PSCmdlet.ParameterSetName -eq 'Path') {
         try {
