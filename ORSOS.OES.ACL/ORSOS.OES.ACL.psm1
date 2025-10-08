@@ -6,6 +6,7 @@
     Provides functions to normalize trustee exports from OES 2018 SP3 into CSV/JSON,
     and apply them as NTFS ACLs on Windows systems.
     Supports both text format and XML format (trustee_database.xml) from OES 2018 SP3.
+    XML format includes optional path information to identify where permissions apply.
 
 .EXAMPLE
     Convert-OESTrustees -InputFile C:\Temp\trustees.txt -CsvOut C:\Temp\trustees.csv -JsonOut C:\Temp\trustees.json
@@ -38,6 +39,8 @@ function Convert-OESTrustees {
         XML format supports two variations:
           - Multiple <right> elements: <rights><right>R</right><right>W</right></rights>
           - Single-line format: <rights>RWF</rights>
+        XML format also supports optional <path> element to indicate the file system path.
+        Output includes Path, Trustee, and Rights columns.
     #>
     [CmdletBinding()]
     param(
@@ -64,6 +67,9 @@ function Convert-OESTrustees {
             [xml]$xmlContent = Get-Content $InputFile -Raw
             
             foreach ($trusteeNode in $xmlContent.SelectNodes("//trustee")) {
+                $pathNode = $trusteeNode.SelectSingleNode("path")
+                $trusteePath = if ($pathNode) { $pathNode.InnerText.Trim() } else { "" }
+                
                 $trusteeName = $trusteeNode.SelectSingleNode("name").InnerText
                 $rightsNode = $trusteeNode.SelectSingleNode("rights")
                 
@@ -89,6 +95,7 @@ function Convert-OESTrustees {
                     
                     if ($rightsArray.Count -gt 0) {
                         $results += [PSCustomObject]@{
+                            Path    = $trusteePath
                             Trustee = $trusteeName
                             Rights  = ($rightsArray -join ",")
                         }
@@ -102,6 +109,7 @@ function Convert-OESTrustees {
             Get-Content $InputFile | ForEach-Object {
                 if ($_ -match "Trustee:\s+(?<trustee>.+?)\s+Rights:\s+\[(?<rights>[A-Z]+)\]") {
                     $results += [PSCustomObject]@{
+                        Path    = ""
                         Trustee = $matches.trustee
                         Rights  = ($matches.rights.ToCharArray() -join ",")
                     }
