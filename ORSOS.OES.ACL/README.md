@@ -39,6 +39,10 @@ Trustee: DOMAIN\Users Rights: [RF]
 ```
 
 ### XML Format (OES 2018 SP3)
+
+The module supports two XML format variations:
+
+#### Multiple `<right>` elements (nested format)
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <trustee-database>
@@ -49,6 +53,17 @@ Trustee: DOMAIN\Users Rights: [RF]
       <right>W</right>
       <right>F</right>
     </rights>
+  </trustee>
+</trustee-database>
+```
+
+#### Single-line rights (compact format)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<trustee-database>
+  <trustee>
+    <name>CN=Users,OU=Groups,DC=example,DC=com</name>
+    <rights>RWF</rights>
   </trustee>
 </trustee-database>
 ```

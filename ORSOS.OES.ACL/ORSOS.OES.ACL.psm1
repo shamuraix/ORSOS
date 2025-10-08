@@ -35,7 +35,9 @@ function Convert-OESTrustees {
     .DESCRIPTION
         Supports both text format and XML format (trustee_database.xml from OES 2018 SP3).
         Text format: "Trustee: <name> Rights: [RIGHTS]"
-        XML format: <trustee><name>...</name><rights><right>R</right>...</rights></trustee>
+        XML format supports two variations:
+          - Multiple <right> elements: <rights><right>R</right><right>W</right></rights>
+          - Single-line format: <rights>RWF</rights>
     #>
     [CmdletBinding()]
     param(
@@ -63,17 +65,33 @@ function Convert-OESTrustees {
             
             foreach ($trusteeNode in $xmlContent.SelectNodes("//trustee")) {
                 $trusteeName = $trusteeNode.SelectSingleNode("name").InnerText
-                $rightsNodes = $trusteeNode.SelectNodes("rights/right")
+                $rightsNode = $trusteeNode.SelectSingleNode("rights")
                 
-                if ($rightsNodes.Count -gt 0) {
+                if ($rightsNode) {
                     $rightsArray = @()
-                    foreach ($rightNode in $rightsNodes) {
-                        $rightsArray += $rightNode.InnerText.Trim()
+                    
+                    # Check if rights are expressed as individual <right> elements
+                    $rightNodes = $rightsNode.SelectNodes("right")
+                    if ($rightNodes.Count -gt 0) {
+                        # Multiple <right> elements format
+                        foreach ($rightNode in $rightNodes) {
+                            $rightsArray += $rightNode.InnerText.Trim()
+                        }
+                    }
+                    else {
+                        # Single-line format: <rights>RWF</rights>
+                        $rightsText = $rightsNode.InnerText.Trim()
+                        if ($rightsText) {
+                            # Split the string into individual characters
+                            $rightsArray = $rightsText.ToCharArray() | ForEach-Object { $_.ToString() }
+                        }
                     }
                     
-                    $results += [PSCustomObject]@{
-                        Trustee = $trusteeName
-                        Rights  = ($rightsArray -join ",")
+                    if ($rightsArray.Count -gt 0) {
+                        $results += [PSCustomObject]@{
+                            Trustee = $trusteeName
+                            Rights  = ($rightsArray -join ",")
+                        }
                     }
                 }
             }
