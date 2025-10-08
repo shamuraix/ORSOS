@@ -5,9 +5,13 @@
 .DESCRIPTION
     Provides functions to normalize trustee exports from OES 2018 SP3 into CSV/JSON,
     and apply them as NTFS ACLs on Windows systems.
+    Supports both text format and XML format (trustee_database.xml) from OES 2018 SP3.
 
 .EXAMPLE
     Convert-OESTrustees -InputFile C:\Temp\trustees.txt -CsvOut C:\Temp\trustees.csv -JsonOut C:\Temp\trustees.json
+
+.EXAMPLE
+    Convert-OESTrustees -InputFile C:\Temp\trustee_database.xml -CsvOut C:\Temp\trustees.csv -JsonOut C:\Temp\trustees.json
 
 .EXAMPLE
     Set-NTFSTrustees -InputFile C:\Temp\trustees.csv -TargetPath D:\MigratedData
@@ -28,6 +32,10 @@ function Convert-OESTrustees {
     <#
     .SYNOPSIS
         Normalize OES trustee export into structured CSV/JSON.
+    .DESCRIPTION
+        Supports both text format and XML format (trustee_database.xml from OES 2018 SP3).
+        Text format: "Trustee: <name> Rights: [RIGHTS]"
+        XML format: <trustee><name>...</name><rights><right>R</right>...</rights></trustee>
     #>
     [CmdletBinding()]
     param(
@@ -41,11 +49,44 @@ function Convert-OESTrustees {
     $results = @()
 
     try {
-        Get-Content $InputFile | ForEach-Object {
-            if ($_ -match "Trustee:\s+(?<trustee>.+?)\s+Rights:\s+\[(?<rights>[A-Z]+)\]") {
-                $results += [PSCustomObject]@{
-                    Trustee = $matches.trustee
-                    Rights  = ($matches.rights.ToCharArray() -join ",")
+        # Detect file format by checking if it's XML
+        $isXml = $false
+        $firstLine = Get-Content $InputFile -First 1 -ErrorAction SilentlyContinue
+        if ($firstLine -match '^\s*<\?xml' -or $InputFile -match '\.xml$') {
+            $isXml = $true
+        }
+
+        if ($isXml) {
+            # Parse XML format (OES 2018 SP3 trustee_database.xml)
+            Write-Verbose "Parsing XML format from $InputFile"
+            [xml]$xmlContent = Get-Content $InputFile -Raw
+            
+            foreach ($trusteeNode in $xmlContent.SelectNodes("//trustee")) {
+                $trusteeName = $trusteeNode.SelectSingleNode("name").InnerText
+                $rightsNodes = $trusteeNode.SelectNodes("rights/right")
+                
+                if ($rightsNodes.Count -gt 0) {
+                    $rightsArray = @()
+                    foreach ($rightNode in $rightsNodes) {
+                        $rightsArray += $rightNode.InnerText.Trim()
+                    }
+                    
+                    $results += [PSCustomObject]@{
+                        Trustee = $trusteeName
+                        Rights  = ($rightsArray -join ",")
+                    }
+                }
+            }
+        }
+        else {
+            # Parse text format (legacy)
+            Write-Verbose "Parsing text format from $InputFile"
+            Get-Content $InputFile | ForEach-Object {
+                if ($_ -match "Trustee:\s+(?<trustee>.+?)\s+Rights:\s+\[(?<rights>[A-Z]+)\]") {
+                    $results += [PSCustomObject]@{
+                        Trustee = $matches.trustee
+                        Rights  = ($matches.rights.ToCharArray() -join ",")
+                    }
                 }
             }
         }
