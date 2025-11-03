@@ -121,7 +121,7 @@ begin {
   Write-Verbose ("Scope/Cat  : {0}/{1}" -f $GroupScope, $GroupCategory)
   Write-Verbose ("Preview    : {0}" -f $PreviewOnly.IsPresent)
   Write-Verbose ("Replace    : {0}" -f $ReplaceMembership.IsPresent)
-  if ($LastLogonDays) {
+  if ($PSBoundParameters.ContainsKey('LastLogonDays')) {
     Write-Verbose ("LastLogonDays : {0}" -f $LastLogonDays)
   }
 }
@@ -139,7 +139,7 @@ process {
     Write-Verbose ("Found {0} computer(s) before filtering." -f $computers.Count)
 
     # Filter by lastLogonDays if specified
-    if ($LastLogonDays) {
+    if ($PSBoundParameters.ContainsKey('LastLogonDays')) {
       $cutoffDate = (Get-Date).AddDays(-$LastLogonDays)
       $cutoffFileTime = $cutoffDate.ToFileTime()
       
