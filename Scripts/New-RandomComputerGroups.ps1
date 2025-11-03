@@ -148,7 +148,6 @@ process {
 
     for ($i = 0; $i -lt $GroupCount; $i++) {
       $groupName = "{0}-{1:00}" -f $GroupNamePrefix, ($i + 1)
-      # Variable is used in New-ADGroup call when creating new groups
       $samAccountName = Get-SafeSamAccountName -Name $groupName
       $members = $buckets[$i] | ForEach-Object { $_.DistinguishedName }
 
@@ -229,7 +228,7 @@ process {
         }
       }
       catch {
-        Write-Warning "Error processing group '${groupName}' - $($_.Exception.Message)"
+        Write-Warning "Error processing group '$groupName' - $($_.Exception.Message)"
       }
     }
   }
