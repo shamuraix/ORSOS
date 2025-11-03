@@ -6,16 +6,20 @@
   -GroupNamePrefix "WKST-Random" `
   -Verbose -PreviewOnly
 ```
-```powershell
+
 # Actually create/update 5 groups under the same OU (safe with -WhatIf first):
+
+```powershell
 .\New-RandomComputerGroups.ps1 `
   -SearchBase "OU=Workstations,DC=corp,DC=example,DC=com" `
   -GroupNamePrefix "WKST-Random" `
   -Verbose -WhatIf
 ```
 
-```powershell
+
 # Create groups in a separate OU and replace membership if groups already exist:
+
+```powershell
 .\New-RandomComputerGroups.ps1 `
   -SearchBase "OU=Servers,DC=corp,DC=example,DC=com" `
   -GroupOU    "OU=BatchGroups,OU=Infra,DC=corp,DC=example,DC=com" `
