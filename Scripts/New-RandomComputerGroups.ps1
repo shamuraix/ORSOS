@@ -32,11 +32,19 @@
 .PARAMETER PreviewOnly
   If set, no changes are made; groupings are output for review.
 
+.PARAMETER LastLogonDays
+  If specified, only includes computers that have logged on within the last X days.
+  Uses the lastLogonTimestamp attribute (replicated across DCs).
+
 .EXAMPLE
   .\New-RandomComputerGroups.ps1 -SearchBase "OU=Workstations,DC=corp,DC=example,DC=com" -GroupNamePrefix "WKST-Random" -Verbose -WhatIf
 
 .EXAMPLE
   .\New-RandomComputerGroups.ps1 -SearchBase "OU=Servers,DC=corp,DC=example,DC=com" -GroupOU "OU=RoleGroups,DC=corp,DC=example,DC=com" -GroupNamePrefix "SRV-Batch" -GroupCount 5 -ReplaceMembership
+
+.EXAMPLE
+  .\New-RandomComputerGroups.ps1 -SearchBase "OU=Workstations,DC=corp,DC=example,DC=com" -GroupNamePrefix "WKST-Active" -LastLogonDays 30 -Verbose
+  Only includes computers that have logged on within the last 30 days.
 #>
 
 [CmdletBinding(SupportsShouldProcess = $true)]
@@ -68,7 +76,11 @@ param(
   [switch]$ReplaceMembership,
 
   [Parameter()]
-  [switch]$PreviewOnly
+  [switch]$PreviewOnly,
+
+  [Parameter()]
+  [ValidateRange(1, 3650)]
+  [int]$LastLogonDays
 )
 
 begin {
@@ -109,19 +121,41 @@ begin {
   Write-Verbose ("Scope/Cat  : {0}/{1}" -f $GroupScope, $GroupCategory)
   Write-Verbose ("Preview    : {0}" -f $PreviewOnly.IsPresent)
   Write-Verbose ("Replace    : {0}" -f $ReplaceMembership.IsPresent)
+  if ($LastLogonDays) {
+    Write-Verbose ("LastLogonDays : {0}" -f $LastLogonDays)
+  }
 }
 
 process {
   try {
     # Pull all computer objects under the OU
-    $computers = Get-ADComputer -SearchBase $SearchBase -SearchScope Subtree -LDAPFilter '(objectClass=computer)' -Properties samAccountName -ErrorAction Stop
+    $computers = Get-ADComputer -SearchBase $SearchBase -SearchScope Subtree -LDAPFilter '(objectClass=computer)' -Properties samAccountName, lastLogonTimestamp -ErrorAction Stop
 
     if (-not $computers -or $computers.Count -eq 0) {
       Write-Warning "No computer objects found under $SearchBase."
       return
     }
 
-    Write-Verbose ("Found {0} computer(s)." -f $computers.Count)
+    Write-Verbose ("Found {0} computer(s) before filtering." -f $computers.Count)
+
+    # Filter by lastLogonDays if specified
+    if ($LastLogonDays) {
+      $cutoffDate = (Get-Date).AddDays(-$LastLogonDays)
+      $cutoffFileTime = $cutoffDate.ToFileTime()
+      
+      $computers = $computers | Where-Object {
+        $_.lastLogonTimestamp -and $_.lastLogonTimestamp -ge $cutoffFileTime
+      }
+      
+      if (-not $computers -or $computers.Count -eq 0) {
+        Write-Warning "No computer objects found that logged on within the last $LastLogonDays days."
+        return
+      }
+      
+      Write-Verbose ("Filtered to {0} computer(s) with lastLogon within {1} days." -f $computers.Count, $LastLogonDays)
+    }
+
+    Write-Verbose ("Processing {0} computer(s)." -f $computers.Count)
 
     # Shuffle
     $shuffled = $computers | Get-Random -Count $computers.Count
