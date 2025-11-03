@@ -84,6 +84,24 @@ begin {
 
   if (-not $GroupOU) { $GroupOU = $SearchBase }
 
+  # Validate that SearchBase exists
+  try {
+    $null = Get-ADObject -Identity $SearchBase -ErrorAction Stop
+    Write-Verbose "Validated SearchBase: $SearchBase"
+  }
+  catch {
+    throw "SearchBase '$SearchBase' does not exist or is not accessible - $($_.Exception.Message)"
+  }
+
+  # Validate that GroupOU exists
+  try {
+    $null = Get-ADObject -Identity $GroupOU -ErrorAction Stop
+    Write-Verbose "Validated GroupOU: $GroupOU"
+  }
+  catch {
+    throw "GroupOU '$GroupOU' does not exist or is not accessible - $($_.Exception.Message)"
+  }
+
   Write-Verbose ("SearchBase : {0}" -f $SearchBase)
   Write-Verbose ("GroupOU    : {0}" -f $GroupOU)
   Write-Verbose ("Prefix     : {0}" -f $GroupNamePrefix)
@@ -117,7 +135,7 @@ process {
     }
 
     # Prepare name helper that keeps sAMAccountName <= 20 chars (if you care about NetBIOS limits)
-    function New-SafeSam {
+    function Get-SafeSamAccountName {
       param([string]$Name)
       if ($Name.Length -le 20) { return $Name }
       # Keep prefix, suffix "-NN" intact; trim middle if needed
@@ -126,11 +144,12 @@ process {
       return ($Name.Substring(0, [Math]::Max(1,$maxPrefix)) + $Name.Substring($Name.Length - $suffixLen))
     }
 
-    $result = @()
+    $script:result = @()
 
     for ($i = 0; $i -lt $GroupCount; $i++) {
       $groupName = "{0}-{1:00}" -f $GroupNamePrefix, ($i + 1)
-      $sam = New-SafeSam -Name $groupName
+      # Variable is used in New-ADGroup call when creating new groups
+      $samAccountName = Get-SafeSamAccountName -Name $groupName
       $members = $buckets[$i] | ForEach-Object { $_.DistinguishedName }
 
       $entry = [PSCustomObject]@{
@@ -138,7 +157,7 @@ process {
         MemberCount = $members.Count
         Members     = $buckets[$i] | Select-Object -ExpandProperty Name
       }
-      $result += $entry
+      $script:result += $entry
 
       if ($PreviewOnly) { continue }
 
@@ -149,24 +168,40 @@ process {
         if ($existing) {
           Write-Verbose "Group exists: $groupName"
 
-          if ($PSCmdlet.ShouldProcess($groupName, if ($ReplaceMembership) { "Replace membership" } else { "Add missing members" })) {
+          $action = if ($ReplaceMembership) { "Replace membership" } else { "Add missing members" }
+          if ($PSCmdlet.ShouldProcess($groupName, $action)) {
             if ($ReplaceMembership) {
-              # Remove current members (if any)
-              $current = Get-ADGroupMember -Identity $existing -ErrorAction SilentlyContinue | Where-Object {$_.ObjectClass -eq 'computer'}
+              # Remove all current members (not just computers)
+              $current = Get-ADGroupMember -Identity $existing -ErrorAction SilentlyContinue
               if ($current) {
                 try {
                   Remove-ADGroupMember -Identity $existing -Members $current -Confirm:$false -ErrorAction Stop
+                  Write-Verbose "Removed $($current.Count) existing member(s) from $groupName"
                 } catch {
-                  Write-Warning "Failed to remove some members from $groupName: $($_.Exception.Message)"
+                  Write-Warning "Failed to remove some members from ${groupName}: $($_.Exception.Message)"
                 }
               }
             }
 
             if ($members.Count -gt 0) {
               try {
-                Add-ADGroupMember -Identity $existing -Members $members -ErrorAction Stop
+                if (-not $ReplaceMembership) {
+                  # When not replacing, only add members that aren't already in the group
+                  $currentMembers = Get-ADGroupMember -Identity $existing -ErrorAction SilentlyContinue | Select-Object -ExpandProperty DistinguishedName
+                  $membersToAdd = $members | Where-Object { $_ -notin $currentMembers }
+                  if ($membersToAdd) {
+                    Add-ADGroupMember -Identity $existing -Members $membersToAdd -ErrorAction Stop
+                    Write-Verbose "Added $($membersToAdd.Count) new member(s) to $groupName"
+                  } else {
+                    Write-Verbose "No new members to add to $groupName (all already present)"
+                  }
+                } else {
+                  # When replacing, we already cleared members, so add all
+                  Add-ADGroupMember -Identity $existing -Members $members -ErrorAction Stop
+                  Write-Verbose "Added $($members.Count) member(s) to $groupName"
+                }
               } catch {
-                Write-Warning "Failed to add some members to $groupName: $($_.Exception.Message)"
+                Write-Warning "Failed to add some members to ${groupName}: $($_.Exception.Message)"
               }
             }
           }
@@ -174,33 +209,39 @@ process {
         else {
           if ($PSCmdlet.ShouldProcess($groupName, "Create group and add $($members.Count) member(s)")) {
             New-ADGroup -Name $groupName `
-                        -SamAccountName $sam `
+                        -SamAccountName $samAccountName `
                         -Path $GroupOU `
                         -GroupScope $GroupScope `
                         -GroupCategory $GroupCategory `
                         -DisplayName $groupName `
                         -Description "Random partition from $SearchBase on $(Get-Date -Format o)" `
                         -ErrorAction Stop | Out-Null
+            Write-Verbose "Created group: $groupName"
             if ($members.Count -gt 0) {
               try {
                 Add-ADGroupMember -Identity $groupName -Members $members -ErrorAction Stop
+                Write-Verbose "Added $($members.Count) member(s) to $groupName"
               } catch {
-                Write-Warning "Failed to add some members to new group $groupName: $($_.Exception.Message)"
+                Write-Warning "Failed to add some members to new group ${groupName}: $($_.Exception.Message)"
               }
             }
           }
         }
       }
       catch {
-        Write-Warning "Error processing group '$groupName': $($_.Exception.Message)"
+        Write-Warning "Error processing group '${groupName}' - $($_.Exception.Message)"
       }
     }
-
-    # Output a concise summary object
-    $result | Sort-Object GroupName | Format-Table -AutoSize
-    return $result
   }
   catch {
     throw "Unhandled error: $($_.Exception.Message)"
+  }
+}
+
+end {
+  # Output a concise summary object
+  if ($script:result) {
+    $script:result | Sort-Object GroupName | Format-Table -AutoSize
+    Write-Output $script:result
   }
 }

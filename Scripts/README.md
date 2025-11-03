@@ -1,3 +1,15 @@
+# New-RandomComputerGroups.ps1
+
+## Overview
+This script randomly distributes computer objects from a specified Active Directory OU into multiple AD groups. It's useful for creating balanced groups for staged deployments, testing, or workload distribution.
+
+## Prerequisites
+- Active Directory PowerShell module must be installed
+- Appropriate permissions to read computer objects and create/modify AD groups
+- PowerShell 5.1 or later
+
+## Usage Examples
+
 ## Dry run (no changes) to review the random distribution:
 
 ```powershell
