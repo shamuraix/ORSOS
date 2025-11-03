@@ -1,4 +1,4 @@
-# Dry run (no changes) to review the random distribution:
+## Dry run (no changes) to review the random distribution:
 
 ```powershell
 .\New-RandomComputerGroups.ps1 `
@@ -7,7 +7,7 @@
   -Verbose -PreviewOnly
 ```
 
-# Actually create/update 5 groups under the same OU (safe with -WhatIf first):
+## Actually create/update 5 groups under the same OU (safe with -WhatIf first):
 
 ```powershell
 .\New-RandomComputerGroups.ps1 `
@@ -17,7 +17,7 @@
 ```
 
 
-# Create groups in a separate OU and replace membership if groups already exist:
+## Create groups in a separate OU and replace membership if groups already exist:
 
 ```powershell
 .\New-RandomComputerGroups.ps1 `
