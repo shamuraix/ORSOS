@@ -58,9 +58,9 @@ param (
     [string]$SetObjectSecurityPath,
 
     [Parameter(HelpMessage = "Full path to AccessChk.exe for verification")]
-    [ValidateScript({ 
-        if ($_ -and -not (Test-Path $_ -PathType Leaf)) { 
-            throw "AccessChkPath must point to an existing file" 
+    [ValidateScript({
+        if ($_ -and -not (Test-Path $_ -PathType Leaf)) {
+            throw "AccessChkPath must point to an existing file"
         }
         $true
     })]
@@ -166,7 +166,7 @@ function Test-SDDLValidity {
         [Parameter(Mandatory = $true)]
         [string]$SDDL
     )
-    
+
     try {
         # Basic SDDL format validation
         # SDDL should start with D: for DACL or O: for Owner or G: for Group
@@ -314,7 +314,7 @@ function Test-ServiceAccessWithAccessChk {
         # Sanitize inputs
         $sanitizedService = $ServiceName -replace '[^\w\-_.]', ''
         $sanitizedUser = $UserAccount -replace '[^\w\-_.\\@]', ''
-        
+
         if ($sanitizedService -ne $ServiceName -or $sanitizedUser -ne $UserAccount) {
             throw "Service name or user account contains invalid characters"
         }
