@@ -142,16 +142,16 @@ process {
     if ($PSBoundParameters.ContainsKey('LastLogonDays')) {
       $cutoffDate = (Get-Date).AddDays(-$LastLogonDays)
       $cutoffFileTime = $cutoffDate.ToFileTime()
-      
+
       $computers = $computers | Where-Object {
         $_.lastLogonTimestamp -and $_.lastLogonTimestamp -ge $cutoffFileTime
       }
-      
+
       if (-not $computers -or $computers.Count -eq 0) {
         Write-Warning "No computer objects found that logged on within the last $LastLogonDays days."
         return
       }
-      
+
       Write-Verbose ("Filtered to {0} computer(s) with lastLogon within {1} days." -f $computers.Count, $LastLogonDays)
     }
 
@@ -205,14 +205,21 @@ process {
           if ($PSCmdlet.ShouldProcess($groupName, $action)) {
             if ($ReplaceMembership) {
               # Remove all current members (not just computers)
-              $current = Get-ADGroupMember -Identity $existing -ErrorAction SilentlyContinue
-              if ($current) {
-                try {
-                  Remove-ADGroupMember -Identity $existing -Members $current -Confirm:$false -ErrorAction Stop
-                  Write-Verbose "Removed $($current.Count) existing member(s) from $groupName"
-                } catch {
-                  Write-Warning "Failed to remove some members from ${groupName}: $($_.Exception.Message)"
+              try {
+                $current = @(Get-ADGroupMember -Identity $existing -ErrorAction Stop)
+                if ($current.Count -gt 0) {
+                  try {
+                    Remove-ADGroupMember -Identity $existing -Members $current -Confirm:$false -ErrorAction Stop
+                    Write-Verbose "Removed $($current.Count) existing member(s) from $groupName"
+                  } catch {
+                    Write-Warning "Failed to remove members from ${groupName}: $($_.Exception.Message)"
+                    Write-Verbose "This may prevent new members from being added correctly"
+                  }
+                } else {
+                  Write-Verbose "Group $groupName has no members to remove"
                 }
+              } catch {
+                Write-Verbose "Could not retrieve members to remove from ${groupName}: $($_.Exception.Message)"
               }
             }
 
@@ -220,49 +227,74 @@ process {
               try {
                 if (-not $ReplaceMembership) {
                   # When not replacing, only add members that aren't already in the group
-                  $currentMembers = Get-ADGroupMember -Identity $existing -ErrorAction SilentlyContinue | Select-Object -ExpandProperty DistinguishedName
-                  $membersToAdd = $members | Where-Object { $_ -notin $currentMembers }
-                  if ($membersToAdd) {
-                    Add-ADGroupMember -Identity $existing -Members $membersToAdd -ErrorAction Stop
-                    Write-Verbose "Added $($membersToAdd.Count) new member(s) to $groupName"
+                  $currentMembers = @()
+                  try {
+                    $currentMembers = @(Get-ADGroupMember -Identity $existing -ErrorAction Stop | Select-Object -ExpandProperty DistinguishedName)
+                    Write-Verbose "Group $groupName currently has $($currentMembers.Count) member(s)"
+                  } catch {
+                    Write-Verbose "Could not retrieve current members for $groupName (possibly empty or access denied): $($_.Exception.Message)"
+                  }
+
+                  $membersToAdd = @($members | Where-Object { $_ -notin $currentMembers })
+                  if ($membersToAdd.Count -gt 0) {
+                    try {
+                      Add-ADGroupMember -Identity $existing -Members $membersToAdd -ErrorAction Stop
+                      Write-Verbose "Added $($membersToAdd.Count) new member(s) to $groupName"
+                    } catch {
+                      Write-Warning "Failed to add members to ${groupName}: $($_.Exception.Message)"
+                      Write-Verbose "Attempted to add: $($membersToAdd -join ', ')"
+                    }
                   } else {
                     Write-Verbose "No new members to add to $groupName (all already present)"
                   }
                 } else {
                   # When replacing, we already cleared members, so add all
-                  Add-ADGroupMember -Identity $existing -Members $members -ErrorAction Stop
-                  Write-Verbose "Added $($members.Count) member(s) to $groupName"
+                  try {
+                    Add-ADGroupMember -Identity $existing -Members $members -ErrorAction Stop
+                    Write-Verbose "Added $($members.Count) member(s) to $groupName"
+                  } catch {
+                    Write-Warning "Failed to add members to ${groupName} after clearing: $($_.Exception.Message)"
+                    Write-Verbose "Attempted to add: $($members -join ', ')"
+                  }
                 }
               } catch {
-                Write-Warning "Failed to add some members to ${groupName}: $($_.Exception.Message)"
+                Write-Warning "Unexpected error while managing membership for ${groupName}: $($_.Exception.Message)"
               }
             }
           }
         }
         else {
           if ($PSCmdlet.ShouldProcess($groupName, "Create group and add $($members.Count) member(s)")) {
-            New-ADGroup -Name $groupName `
-                        -SamAccountName $samAccountName `
-                        -Path $GroupOU `
-                        -GroupScope $GroupScope `
-                        -GroupCategory $GroupCategory `
-                        -DisplayName $groupName `
-                        -Description "Random partition from $SearchBase on $(Get-Date -Format o)" `
-                        -ErrorAction Stop | Out-Null
-            Write-Verbose "Created group: $groupName"
+            try {
+              New-ADGroup -Name $groupName `
+                          -SamAccountName $samAccountName `
+                          -Path $GroupOU `
+                          -GroupScope $GroupScope `
+                          -GroupCategory $GroupCategory `
+                          -DisplayName $groupName `
+                          -Description "Random partition from $SearchBase on $(Get-Date -Format o)" `
+                          -ErrorAction Stop | Out-Null
+              Write-Verbose "Created group: $groupName"
+            } catch {
+              Write-Warning "Failed to create group ${groupName}: $($_.Exception.Message)"
+              continue
+            }
+
             if ($members.Count -gt 0) {
               try {
                 Add-ADGroupMember -Identity $groupName -Members $members -ErrorAction Stop
                 Write-Verbose "Added $($members.Count) member(s) to $groupName"
               } catch {
-                Write-Warning "Failed to add some members to new group ${groupName}: $($_.Exception.Message)"
+                Write-Warning "Failed to add members to new group ${groupName}: $($_.Exception.Message)"
+                Write-Verbose "Attempted to add: $($members -join ', ')"
               }
             }
           }
         }
       }
       catch {
-        Write-Warning "Error processing group '$groupName' - $($_.Exception.Message)"
+        Write-Warning "Error processing group '$groupName': $($_.Exception.Message)"
+        Write-Verbose "Stack trace: $($_.ScriptStackTrace)"
       }
     }
   }
